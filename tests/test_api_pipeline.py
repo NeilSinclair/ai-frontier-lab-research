@@ -170,6 +170,11 @@ class TestTheProbeLeavesTheDatabaseAsleep:
         assert TestClient(api_main.app).get("/api/ping").json() == {"ok": True}
         assert not checkouts, "/api/ping touched the database"
 
+    def test_ping_answers_head(self, monkeypatch, tmp_path):
+        """Free uptime monitors probe with HEAD; a 405 would page as an outage."""
+        api_main = self._app(monkeypatch, tmp_path)
+        assert TestClient(api_main.app).head("/api/ping").status_code == 200
+
     def test_the_probe_itself_would_notice_a_query(self, monkeypatch, tmp_path):
         """Guards the test above: the listener does fire for a route that queries."""
         from sqlalchemy import event
