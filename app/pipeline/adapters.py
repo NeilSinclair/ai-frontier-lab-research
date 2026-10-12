@@ -54,7 +54,8 @@ def fetch_paper_abstracts(session, limit: int | None = None) -> tuple[list, list
 
     Returns:
         Tuple of (article records, unresolved). Both are handed to the caller
-        rather than written here, so landing stays in one place in the worker.
+        rather than written here; the worker lands them. Papers re-derive a
+        whole month each firing, so they do not need to land with a mark (D87).
     """
     import yaml
     from paper_text import collect
@@ -249,6 +250,36 @@ def _cost_log_total(lab: str) -> float:
     return total
 
 
+def _land_articles(session, items: list[dict], leg: str) -> None:
+    """Write a leg's articles to bronze in the transaction that advances its mark.
+
+    `run_source` commits a source's success -- `last_success_at` and the
+    watermark, which bound every later fetch -- as soon as the adapter returns.
+    The worker lands the items a phase later. A firing that fails in between
+    keeps the advanced mark and loses the items, and the next firing does not
+    ask for them again. Run 45 did exactly this: 109 posts and three weeks of
+    announcements were fetched, the firing failed at landing, and both legs
+    resumed from the day it ran (D87). Releases have landed this way since D52.
+
+    The savepoint keeps a row Postgres refuses from poisoning the session: the
+    source fails and keeps its old mark, and the rest of the firing carries on.
+
+    The worker's landing phase still runs and finds these rows unchanged.
+
+    Args:
+        session: Open session, or None when the caller has no database.
+        items: Article-shaped records, each with a `url`.
+        leg: The leg, for the `source_file` label.
+    """
+    if session is None or not items:
+        return
+    from app.load_raw import load_article_records
+    from app.pipeline.registry import CORPUS_LABELS
+
+    with session.begin_nested():
+        load_article_records(session, items, CORPUS_LABELS[leg])
+
+
 def fetch_announcements(source, state=None, session=None) -> FetchResult:
     """Fetch one lab's in-window announcements.
 
@@ -262,7 +293,8 @@ def fetch_announcements(source, state=None, session=None) -> FetchResult:
             entry plus `window_months`.
         session: Open session, used to skip articles already stored and
             classified (see :func:`_settled_urls`). Without one every in-window
-            article is downloaded.
+            article is downloaded. Also written to: :func:`_land_articles`
+            stores the articles at the commit that advances the mark.
         state: The source's persistent state; its `last_success_at` bounds the
             window (see :func:`_window_start`). This used to be unused, on the
             reasoning that a full re-derive was nearly free because every page
@@ -334,6 +366,8 @@ def fetch_announcements(source, state=None, session=None) -> FetchResult:
                 "name": f"{lab['id']}:wayback",
                 "reason": f"backfill failed, articles kept on summaries: {exc}",
             })
+
+    _land_articles(session, items, "announcements")
 
     newest = max((a["date"] for a in items), default=None)
     return FetchResult(
@@ -961,8 +995,10 @@ def fetch_posts(source, state=None, session=None) -> FetchResult:
         state: The source's persistent state; `watermark["max_published"]`
             bounds the pull. `None`, or a state with no mark, reads the full
             window.
-        session: Open session, read-only, used to mark a post whose links point
-            at coverage the register already holds.
+        session: Open session. Read to mark a post whose links point at
+            coverage the register already holds, and written to by
+            :func:`_land_articles`, so the posts are stored at the commit that
+            advances the mark.
 
     Returns:
         FetchResult whose `items` are article-shaped post records and whose
@@ -1013,6 +1049,15 @@ def fetch_posts(source, state=None, session=None) -> FetchResult:
     # never saw this" must not look the same to whoever reads the leg later.
     unresolved.extend({"url": d["url"], "lab": d["lab"], "kind": "post",
                        "reason": f"prefiltered: {d['dropped']}"} for d in dropped)
+
+    # X has been paid by now. If the landing raises, the source fails and the
+    # FetchResult that carries the bill is never returned, so the spend rides
+    # on the exception for `run_source` to record.
+    try:
+        _land_articles(session, kept, "posts")
+    except Exception as exc:
+        exc.cost_usd = spend.usd
+        raise
 
     # One mark for the whole leg, so it may only advance on a run that read
     # every handle. See the docstring: advancing it past a handle that errored

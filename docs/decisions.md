@@ -9043,3 +9043,43 @@ happened on Render.
 
 **Known open.** One article whose text Postgres refuses still fails the whole
 landing phase rather than that article alone.
+
+## D87 — Announcements and posts land with the mark (2026-10-12)
+
+**Decision.** `fetch_announcements` and `fetch_posts` write their items to
+`raw_articles` inside the adapter, in a savepoint, so they commit with the
+source's `last_success_at` and watermark. Releases have done this since D52.
+
+**What happened.** Run 45 fetched 109 posts ($1.12) and the announcements
+published since 2026-09-17, then failed at landing (D86). `run_source` had
+already committed each source's success. The posts watermark stood at
+2026-10-11 and every announcements `last_success_at` at 2026-10-12, so runs 46
+and 47 asked only for what came after. Measured on Neon after run 47: no
+announcement dated 2026-09-18 to 2026-10-11 for any lab, and no post in that
+range. Releases, landed in the adapter, had 117 rows across it. Papers
+re-derive a whole month each firing and were not affected.
+
+**Rejected.** Restoring the marks when a firing fails: an OOM kill or the
+job timeout runs no handler.
+
+**Consequences.**
+- A row Postgres refuses now fails its own source and leaves the mark alone,
+  instead of failing the firing. That narrows D86's open item to the source,
+  it does not close it: the lab's whole batch rolls back, and the article is
+  found and refused again each firing until it ages out or someone steps in.
+- A posts landing that fails has already paid X. The spend rides on the
+  exception and `run_source` records it on the failed `run_sources` row.
+- Rows landed by an adapter carry no `load_run_id`, as releases do not, and an
+  article whose content changes has its `load_run_id` cleared. Nothing reads
+  the column.
+- The worker's landing phase still runs and reports these rows as unchanged,
+  so `stats.articles.inserted` and `stats.posts_corpus.inserted` no longer
+  count what a firing fetched. `run_sources.items_seen` does.
+- `load_article_records` reads all of `raw_articles`; that is eight more such
+  reads per firing. Not measured.
+- Papers are protected only by their one-month window: about four consecutive
+  weekly firings failing after ingest would open the same gap.
+
+**Not done here.** The missing range is not recovered by this change. It needs
+the announcements `last_success_at` and the posts watermark set back to
+2026-09-17 on the hosted database, then a firing.

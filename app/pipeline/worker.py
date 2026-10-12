@@ -398,6 +398,9 @@ def _phases(
     note("landing")
     if "announcements" in chosen:
         stats["corpus"] = merge_announcements(report.items_for("announcements"))
+    # Announcements and posts are already in bronze by now: their adapters
+    # land them at the commit that advances the mark (D87). The loads below
+    # still run -- they report, and they pick up the committed corpus files.
     # Releases are deliberately absent here. They go into bronze inside their
     # own adapter, in the same transaction that advances the cursor gating
     # every future fetch — landing them a phase later would let a failure in
@@ -442,9 +445,9 @@ def _phases(
         for lab, items in by_lab.items():
             register_mod.load_unresolved(session, "papers", lab, items, run.id)
 
-    # Posts land the same way papers do: the adapter returns article-shaped
-    # records and they go into the same bronze table, so this is a fourth
-    # corpus rather than a fourth pipeline. Unresolved handles are grouped by
+    # Posts are article-shaped records in the same bronze table papers use.
+    # Their adapter has already landed them (D87) and this load only reports.
+    # A fourth corpus, not a fourth pipeline. Unresolved handles are grouped by
     # lab for the same reason papers are -- one lab's handles going quiet must
     # be visible as that lab's problem.
     if "posts" in chosen:

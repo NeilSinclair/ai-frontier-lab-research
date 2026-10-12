@@ -1556,3 +1556,108 @@ class TestAPartialPostsPullDoesNotAdvanceTheMark:
         result = adapters.fetch_posts(source)
         assert result.watermark == {"max_published": "2026-09-04"}
         assert any("prefiltered" in u["reason"] for u in result.unresolved)
+
+
+class TestItemsLandWithTheMark:
+    """The silent failure: a firing that fails after ingest loses what it read.
+
+    `run_source` commits `last_success_at` and the watermark when the adapter
+    returns, and both bound the next fetch. The worker used to land
+    announcements and posts a phase later, so run 45 -- which failed at landing
+    -- kept the advanced marks and stored nothing. 109 posts and three weeks of
+    announcements were never asked for again, and a gap like that looks exactly
+    like a quiet month (D87).
+    """
+
+    def _posts(self, monkeypatch):
+        leg = TestAPartialPostsPullDoesNotAdvanceTheMark()
+        return leg._leg(monkeypatch, [leg._post()], [])
+
+    def _announcements(self, monkeypatch, text="body"):
+        import fetch_announcements as fa
+
+        monkeypatch.setitem(fa.METHODS, "sitemap", lambda lab, cutoff, skip=None: [
+            {"url": "https://lab.example/a", "lab": "anthropic", "date": "2026-10-01",
+             "title": "t", "text": text}])
+        return Source(leg="announcements", id="anthropic", label="A", stage=1,
+                      enabled=True, config={"method": "sitemap", "window_months": 3})
+
+    def _stored(self, session):
+        return session.scalar(select(func.count()).select_from(m.RawArticle))
+
+    @pytest.mark.parametrize("leg", ["_posts", "_announcements"])
+    def test_a_firing_that_dies_after_ingest_keeps_what_it_read(
+            self, monkeypatch, session, leg):
+        from app.pipeline import orchestrator
+        from app.pipeline import state as state_mod
+
+        source = getattr(self, leg)(monkeypatch)
+        outcome = orchestrator.run_source(session, source)
+        assert outcome.status == orchestrator.SUCCEEDED
+        # Everything after ingest is lost: the landing phase never commits.
+        session.rollback()
+
+        assert self._stored(session) == 1, (
+            "the mark advanced and the items did not survive; the next firing "
+            "will not ask for them again")
+        assert state_mod.load(session, source.leg, source.id).last_success_at
+
+    def test_a_row_the_database_refuses_fails_that_source_alone(
+            self, monkeypatch, session):
+        """Run 45's other half: one unstorable article ended the whole firing."""
+        from app import load_raw
+        from app.pipeline import orchestrator
+        from app.pipeline import state as state_mod
+
+        def refuse(session, records, source_file, run_id=None):
+            session.add(m.RawArticle(url=records[0]["url"], payload=records[0],
+                                     content_hash="h", source_file=source_file))
+            session.flush()
+            raise ValueError("PostgreSQL text fields cannot contain NUL")
+
+        monkeypatch.setattr(load_raw, "load_article_records", refuse)
+        source = self._announcements(monkeypatch)
+
+        outcome = orchestrator.run_source(session, source)
+
+        assert outcome.status == orchestrator.FAILED
+        assert self._stored(session) == 0
+        st = state_mod.load(session, source.leg, source.id)
+        assert st.last_success_at is None and st.consecutive_failures == 1
+
+    def test_the_spend_on_a_failed_posts_landing_is_still_recorded(
+            self, monkeypatch, session):
+        """X bills per post returned, before anything is stored."""
+        from app import load_raw
+        from app.pipeline import orchestrator
+
+        def refuse(*a, **k):
+            raise ValueError("refused")
+
+        monkeypatch.setattr(load_raw, "load_article_records", refuse)
+        monkeypatch.setattr("x_client.Spend.usd", property(lambda self: 1.12))
+        source = self._posts(monkeypatch)
+        run = m.PipelineRun(kind="manual", status="running")
+        session.add(run)
+        session.flush()
+
+        outcome = orchestrator.run_source(session, source, run_id=run.id)
+
+        assert outcome.status == orchestrator.FAILED
+        row = session.scalars(select(m.RunSource)).one()
+        assert row.cost_usd == 1.12
+
+    def test_the_workers_later_load_finds_the_rows_unchanged(
+            self, monkeypatch, session, tmp_path):
+        """If the two loads ever disagree on a record, every fresh article is
+        rewritten each firing and nothing says so."""
+        from app.load_raw import load_articles
+        from app.pipeline.sink import merge_announcements
+
+        source = self._announcements(monkeypatch, text="caf\u00e9 \u2014 body")
+        result = adapters.fetch_announcements(source, session=session)
+
+        corpus = tmp_path / "announcements.json"
+        merge_announcements(result.items, path=corpus)
+        assert load_articles(session, path=corpus) == {
+            "inserted": 0, "updated": 0, "unchanged": 1}
