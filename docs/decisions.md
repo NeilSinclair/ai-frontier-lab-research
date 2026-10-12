@@ -8991,3 +8991,33 @@ turned back on.
 - `research/github/label_repos.py` still builds the bronze-filtered population
   D65 was measured on, and `research/corpus/first_mention.py`'s CLI report
   ranks `raw_github_repos` directly. Both are offline scripts and now frozen.
+
+## D85 — Connections lift the idle-in-transaction timeout (2026-10-12)
+
+**Decision.** Every Postgres connection runs
+`SET idle_in_transaction_session_timeout = 0` on connect (`app/db.py`).
+
+**What happened.** The first firing from a GitHub runner against Neon (run 44,
+a dry run) failed 35 minutes in. `orchestrator.run_source` reads the source's
+state, which opens a transaction, then the adapter fetches, then the attempt is
+written. OpenAI's 65 waiting articles came from the Internet Archive at ~32 s
+each (2,091 s). Neon ends a session idle in a transaction after 5 minutes, so
+the write hit a dead connection and the firing failed. Render's Postgres had no
+such limit: run 42 held the same shape for 339 s and succeeded.
+
+**Rejected.** Committing before each adapter: the adapters read through the
+session themselves, and the releases adapter writes inside its fetch (D52), so
+the transaction reopens at once. `ALTER ROLE ... SET`: works, but lives in the
+database rather than the repo and is lost on a rebuild.
+
+**Measured.** With the setting, a transaction held idle on Neon for 420 s was
+still on the same backend. Not yet measured: a full firing.
+
+**Consequences.**
+- The setting is session-level and needs a direct connection. Behind a
+  transaction-mode pooler it would not stick.
+- It applies to the API too. A leaked open transaction there would now keep the
+  database awake instead of being cut off; every handler closes its session.
+- Run 44 also recorded `google-deepmind` failing with "feed parsed 0 items"
+  from the runner, while the same feed serves items elsewhere. One reading;
+  unexplained.

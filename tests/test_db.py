@@ -54,3 +54,50 @@ class TestBarePostgresUrlsGetADriver:
     def test_the_sqlite_fallback_still_applies(self, monkeypatch):
         monkeypatch.delenv("DATABASE_URL", raising=False)
         assert database_url() == "sqlite:///bitcap.db"
+
+
+class TestALongFetchDoesNotKillTheSession:
+    """The silent-until-it-is-fatal failure: one slow source ends the firing.
+
+    A hosted Postgres may end a session left idle in a transaction. The
+    orchestrator is in exactly that state for as long as an adapter is on the
+    network, so the first firing against Neon died 35 minutes in (D85).
+    """
+
+    def test_a_postgres_connection_lifts_the_timeout_and_commits_it(self):
+        from sqlalchemy import event
+
+        from app.db import _allow_long_fetches
+
+        engine = get_engine("postgresql://u:p@host:5432/db")
+        assert event.contains(engine, "connect", _allow_long_fetches)
+
+        calls = []
+
+        class Cursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def execute(self, sql):
+                calls.append(sql)
+
+        class Connection:
+            def cursor(self):
+                return Cursor()
+
+            def commit(self):
+                calls.append("COMMIT")
+
+        _allow_long_fetches(Connection(), None)
+        # Committed, or the SET is rolled back with the first transaction.
+        assert calls == ["SET idle_in_transaction_session_timeout = 0", "COMMIT"]
+
+    def test_sqlite_is_left_alone(self):
+        from sqlalchemy import event
+
+        from app.db import _allow_long_fetches
+
+        assert not event.contains(get_engine("sqlite://"), "connect", _allow_long_fetches)
