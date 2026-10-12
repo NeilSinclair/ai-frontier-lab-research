@@ -129,7 +129,11 @@ def fetch(url: str, retries: int = 3, user_agent: str | None = UA,
         try:
             req = request.Request(url, headers=headers)
             with request.urlopen(req, timeout=45) as resp:
-                body = resp.read().decode("utf-8", errors="replace")
+                # Some hosts gzip without being asked: deepmind.google does to a
+                # GitHub runner, and the raw bytes were stored as article text
+                # (D86). The magic bytes are checked, not the header.
+                body = _wayback_decompress(resp.read(), "").decode(
+                    "utf-8", errors="replace")
             cached.write_text(body)
             return body
         except (error.HTTPError, error.URLError, TimeoutError) as exc:

@@ -42,6 +42,7 @@ when the server sends it, and no backoff is ever shorter than the interval.
 from __future__ import annotations
 
 import email.utils
+import gzip
 import hashlib
 import re
 import sys
@@ -495,6 +496,27 @@ def db_put(url: str, body: str, expires_at: datetime | None) -> bool:
 # The fetch
 # --------------------------------------------------------------------------
 
+def _inflate(body: bytes) -> bytes:
+    """Gunzip a body that arrived compressed without being asked for.
+
+    urllib sends no Accept-Encoding and decodes nothing, so a host that gzips
+    anyway hands back bytes that decode to mojibake. deepmind.google does this
+    to a GitHub runner (D86). Detected by magic bytes, not by header.
+
+    Args:
+        body: Raw response bytes.
+
+    Returns:
+        The decompressed bytes, or the input unchanged.
+    """
+    if body[:2] == b"\x1f\x8b":
+        try:
+            return gzip.decompress(body)
+        except (OSError, EOFError):
+            return body
+    return body
+
+
 def fetch(
     url: str,
     *,
@@ -562,7 +584,8 @@ def fetch(
         _wait_turn(family, interval)
         try:
             req = urllib.request.Request(url, headers=headers)
-            body = urllib.request.urlopen(req, timeout=90).read().decode("utf-8", "replace")
+            body = _inflate(urllib.request.urlopen(req, timeout=90).read()).decode(
+                "utf-8", "replace")
         except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
             last_error = exc
             # A 404 is an answer, not a failure to get one. Retrying it spent

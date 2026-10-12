@@ -9021,3 +9021,25 @@ still on the same backend. Not yet measured: a full firing.
 - Run 44 also recorded `google-deepmind` failing with "feed parsed 0 items"
   from the runner, while the same feed serves items elsewhere. One reading;
   unexplained.
+
+## D86 — Fetchers inflate gzip they did not ask for (2026-10-12)
+
+**Decision.** `fetch_announcements.fetch` and `fetch_cache.fetch` gunzip a
+response body that starts with the gzip magic bytes.
+
+**What happened.** Both fetchers use urllib, which sends no `Accept-Encoding`
+and decodes nothing. `deepmind.google` gzips anyway when the request comes from
+a GitHub runner; it does not from a laptop or, before, from Render. Run 44
+recorded `google-deepmind` as "feed parsed 0 items". Run 45 got further: an
+article ("Introducing SynthID Bio") was fetched as raw gzip, decoded to text
+containing NUL, and the `raw_articles` insert refused it, failing the firing at
+landing. Nothing was stored: no gzip-shaped rows in `raw_articles` or
+`fetch_cache`.
+
+**Also measured in run 45.** D85 held: the session survived OpenAI's 668 s and
+xAI's 206 s fetches. All eight releases sources succeeded from the runner, the
+first firing since D84. Two papers sources failed on arXiv 429s, which also
+happened on Render.
+
+**Known open.** One article whose text Postgres refuses still fails the whole
+landing phase rather than that article alone.
