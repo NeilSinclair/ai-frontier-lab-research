@@ -12,9 +12,9 @@ import { useEffect, useState } from "react";
 
 import { SessionButton, apiFetch, useSession } from "../auth";
 
-const ACCENT = "#5ac3f0";
-const NEGATIVE = "#f2545b";
-const MUTED = "#9a9992";
+const ACCENT = "#1f5c4d";
+const NEGATIVE = "#b3403f";
+const MUTED = "#5b6672";
 
 function statusColor(status) {
   if (status === "succeeded") return ACCENT;
@@ -101,8 +101,8 @@ function DriftChart({ points, floor = 0.8 }) {
       <svg width={w} height={h} role="img" aria-label={`Classifier agreement over ${usable.length} measurements, floor ${floor}`}>
         {ticks.map((v) => (
           <g key={v}>
-            <line x1={pad.left} x2={w - pad.right} y1={ys(v)} y2={ys(v)} stroke="#333331" strokeWidth="1" />
-            <text x={4} y={ys(v) + 4} fill="#6f6e69" fontSize="10">{v.toFixed(2)}</text>
+            <line x1={pad.left} x2={w - pad.right} y1={ys(v)} y2={ys(v)} stroke="#d5d0c3" strokeWidth="1" />
+            <text x={4} y={ys(v) + 4} fill="#8a929b" fontSize="10">{v.toFixed(2)}</text>
           </g>
         ))}
         {/* The alert threshold, dashed and labelled so it is never mistaken for data. */}
@@ -118,7 +118,7 @@ function DriftChart({ points, floor = 0.8 }) {
           </circle>
         ))}
         {/* Label the ends only — a number on every point is noise. */}
-        <text x={xs(usable.length - 1)} y={ys(usable[usable.length - 1].mechanism_f1) - 10} fill="#f5f4f1" fontSize="11" textAnchor="end">
+        <text x={xs(usable.length - 1)} y={ys(usable[usable.length - 1].mechanism_f1) - 10} fill="#17212b" fontSize="11" textAnchor="end">
           {usable[usable.length - 1].mechanism_f1.toFixed(3)}
         </text>
       </svg>
@@ -319,7 +319,7 @@ function OpsView() {
               {alerts.map((a) => (
                 <div key={a.id} style={{ borderTop: "1px solid var(--border-soft)", padding: "10px 0", display: "flex", flexDirection: "column", gap: 4 }}>
                   <div style={{ display: "flex", gap: 12, alignItems: "baseline", fontSize: 12 }}>
-                    <span style={{ color: a.severity === "critical" ? NEGATIVE : a.severity === "warning" ? "#e0a458" : MUTED, width: 64 }}>
+                    <span style={{ color: a.severity === "critical" ? NEGATIVE : a.severity === "warning" ? "#a8701c" : MUTED, width: 64 }}>
                       {a.severity}
                     </span>
                     <span style={{ color: "var(--muted-2)", width: 120 }}>{a.rule}</span>
