@@ -19,9 +19,9 @@ import { SessionButton, apiFetch } from "../auth";
 // have to leave the page they live in to get it.
 import { DetailPanel, decorateItems, groupAnchors, leadHoldings, relatedByGroup } from "../detail";
 
-const ACCENT = "#5ac3f0";
-const NEGATIVE = "#f2545b";
-const MUTED = "#9a9992";
+const ACCENT = "#1f5c4d";
+const NEGATIVE = "#b3403f";
+const MUTED = "#5b6672";
 
 function signColor(sign) {
   return sign === "positive" ? ACCENT : sign === "negative" ? NEGATIVE : MUTED;
@@ -30,12 +30,12 @@ function signArrow(sign) {
   return sign === "positive" ? "↑" : sign === "negative" ? "↓" : "↔";
 }
 function bandStyle(band) {
-  if (band === "high") return { background: ACCENT, color: "#0d0d0d", borderColor: ACCENT, fontWeight: 600 };
+  if (band === "high") return { background: ACCENT, color: "#fbfaf6", borderColor: ACCENT, fontWeight: 600 };
   if (band === "medium") return { background: "transparent", color: ACCENT, borderColor: ACCENT };
-  return { background: "transparent", color: MUTED, borderColor: "#333331" };
+  return { background: "transparent", color: MUTED, borderColor: "#d5d0c3" };
 }
 function actionStyle(action) {
-  if (action === "adopt") return { background: ACCENT, color: "#0d0d0d", borderColor: ACCENT, fontWeight: 600 };
+  if (action === "adopt") return { background: ACCENT, color: "#fbfaf6", borderColor: ACCENT, fontWeight: 600 };
   return { background: "transparent", color: ACCENT, borderColor: ACCENT };
 }
 

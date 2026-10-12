@@ -22,9 +22,9 @@
 
 import { useState } from "react";
 
-export const ACCENT = "#5ac3f0";
-export const NEGATIVE = "#f2545b";
-export const MUTED = "#9a9992";
+export const ACCENT = "#1f5c4d";
+export const NEGATIVE = "#b3403f";
+export const MUTED = "#5b6672";
 
 export function signColor(sign) {
   return sign === "positive" ? ACCENT : sign === "negative" ? NEGATIVE : MUTED;
@@ -43,16 +43,16 @@ export function signArrow(sign) {
 // versions here would silently restyle every low and unbanded row on the
 // dashboard. The digest keeps its own for its cards; only the panel is shared.
 export function bandStyle(band) {
-  if (band === "high") return { background: ACCENT, color: "#0d0d0d", borderColor: ACCENT, fontWeight: 600 };
+  if (band === "high") return { background: ACCENT, color: "#fbfaf6", borderColor: ACCENT, fontWeight: 600 };
   if (band === "medium") return { background: "transparent", color: ACCENT, borderColor: ACCENT };
-  if (band === "low") return { background: "transparent", color: MUTED, borderColor: "#333331" };
-  return { background: "transparent", color: "#6f6e69", borderColor: "#333331" };
+  if (band === "low") return { background: "transparent", color: MUTED, borderColor: "#d5d0c3" };
+  return { background: "transparent", color: "#8a929b", borderColor: "#d5d0c3" };
 }
 
 export function actionStyle(action) {
-  if (action === "adopt") return { background: ACCENT, color: "#0d0d0d", borderColor: ACCENT, fontWeight: 600 };
+  if (action === "adopt") return { background: ACCENT, color: "#fbfaf6", borderColor: ACCENT, fontWeight: 600 };
   if (action === "investigate") return { background: "transparent", color: ACCENT, borderColor: ACCENT };
-  return { background: "transparent", color: MUTED, borderColor: "#333331" };
+  return { background: "transparent", color: MUTED, borderColor: "#d5d0c3" };
 }
 
 // Related-but-distinct articles, deliberately shaped unlike a fold. A fold says
@@ -390,14 +390,14 @@ export function DetailPanel({ item, related, audience, onOpen, onClose }) {
             <span style={{ fontSize: 12, color: "var(--muted-2)" }}>{item.date}</span>
           </div>
           <button className="close-btn" onClick={onClose}>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1L11 11M11 1L1 11" stroke="#f5f4f1" strokeWidth="1.3" /></svg>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1L11 11M11 1L1 11" stroke="#17212b" strokeWidth="1.3" /></svg>
           </button>
         </div>
 
         <div className="serif" style={{ fontSize: 23, fontWeight: 500, lineHeight: 1.3 }}>{item.title}</div>
 
         <a href={item.sourceUrl} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--muted-2)" }}>
-          <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M6 4H4a2 2 0 00-2 2v6a2 2 0 002 2h6a2 2 0 002-2v-2M10 2h4v4M14 2L7 9" stroke="#6f6e69" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M6 4H4a2 2 0 00-2 2v6a2 2 0 002 2h6a2 2 0 002-2v-2M10 2h4v4M14 2L7 9" stroke="#8a929b" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
           {item.sourceUrl}
         </a>
 
