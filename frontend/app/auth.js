@@ -21,8 +21,8 @@ import { useEffect, useState } from "react";
 export const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const KEY = "bitcap.token";
-const ACCENT = "#5ac3f0";
-const NEGATIVE = "#f2545b";
+const ACCENT = "#1f5c4d";
+const NEGATIVE = "#b3403f";
 
 export function getToken() {
   if (typeof window === "undefined") return null;
@@ -160,7 +160,7 @@ function LoginScreen({ onSignedIn, onCancel }) {
               style={{
                 padding: 12,
                 background: ACCENT,
-                color: "#0d0d0d",
+                color: "#fbfaf6",
                 borderColor: ACCENT,
                 opacity: busy ? 0.6 : 1,
               }}

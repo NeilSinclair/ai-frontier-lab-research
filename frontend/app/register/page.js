@@ -16,9 +16,9 @@ import { useEffect, useMemo, useState } from "react";
 
 import { SessionButton, apiFetch } from "../auth";
 
-const ACCENT = "#5ac3f0";
-const NEGATIVE = "#f2545b";
-const MUTED = "#9a9992";
+const ACCENT = "#1f5c4d";
+const NEGATIVE = "#b3403f";
+const MUTED = "#5b6672";
 
 function Section({ title, note, children }) {
   return (

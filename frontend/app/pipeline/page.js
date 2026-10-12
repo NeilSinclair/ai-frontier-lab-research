@@ -13,8 +13,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { SessionButton, apiFetch, useSession } from "../auth";
 
-const ACCENT = "#5ac3f0";
-const NEGATIVE = "#f2545b";
+const ACCENT = "#1f5c4d";
+const NEGATIVE = "#b3403f";
 const POLL_MS = 3000;
 
 // What each phase marker on the run row means, in words. The pipeline writes
@@ -59,7 +59,7 @@ function clockTime(iso) {
 function statusColor(status) {
   if (status === "succeeded") return ACCENT;
   if (status === "failed") return NEGATIVE;
-  if (status === "running") return "#e8c468";
+  if (status === "running") return "#a8701c";
   return "var(--muted-2)";
 }
 
@@ -148,7 +148,7 @@ function RunCard({ run, sources }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div
         style={{
-          border: `1px solid ${isRunning ? "#e8c468" : "var(--border)"}`,
+          border: `1px solid ${isRunning ? "#a8701c" : "var(--border)"}`,
           background: "var(--bg-2)",
           padding: "18px 20px",
           display: "flex",
@@ -163,7 +163,7 @@ function RunCard({ run, sources }) {
                 width: 9,
                 height: 9,
                 borderRadius: "50%",
-                background: "#e8c468",
+                background: "#a8701c",
                 animation: "bitcapPulse 1.2s ease-in-out infinite",
               }}
             />
@@ -374,7 +374,7 @@ function PipelineView() {
             style={{
               padding: "12px 28px",
               background: locked ? "var(--bg-3)" : ACCENT,
-              color: locked ? "var(--muted-2)" : "#0d0d0d",
+              color: locked ? "var(--muted-2)" : "#fbfaf6",
               borderColor: locked ? "var(--border)" : ACCENT,
               cursor: locked ? "not-allowed" : "pointer",
             }}
