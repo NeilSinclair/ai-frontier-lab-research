@@ -320,9 +320,13 @@ def register_search(q: str, limit: int = 50) -> list[dict]:
         session.close()
 
 
-@app.get("/api/ping")
+@app.api_route("/api/ping", methods=["GET", "HEAD"])
 def ping() -> dict:
-    """Liveness without a database query, for uptime monitors and deploy probes."""
+    """Liveness without a database query, for uptime monitors and deploy probes.
+
+    HEAD as well as GET: free uptime monitors probe with HEAD, and a 405 there
+    reads as an outage.
+    """
     return {"ok": True}
 
 
