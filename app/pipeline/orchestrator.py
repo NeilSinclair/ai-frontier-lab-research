@@ -40,6 +40,10 @@ class SourceOutcome:
     result: FetchResult | None = None
     error: str | None = None
     duration_s: float = 0.0
+    # Spend a source made before it failed. A success carries its spend on
+    # `result`; a failure has no result, and money already paid must still be
+    # recorded (D87).
+    failed_cost_usd: float = 0.0
 
     @property
     def items(self) -> list[dict]:
@@ -152,11 +156,15 @@ def run_source(
         result = adapter_for(source)(source, st, session)
     except (Exception, SystemExit) as exc:  # noqa: BLE001
         state_mod.record_failure(st, exc)
+        spent = getattr(exc, "cost_usd", 0.0)
+        if budget is not None and spent:
+            budget.spend(spent)
         outcome = SourceOutcome(
             source=source,
             status=FAILED,
             error=f"{type(exc).__name__}: {exc}",
             duration_s=time.monotonic() - started,
+            failed_cost_usd=spent,
         )
     else:
         state_mod.record_success(st, result.watermark)
@@ -189,7 +197,8 @@ def _record(session: Session, outcome: SourceOutcome, run_id: int | None) -> Non
                 source_id=outcome.source.id,
                 status=outcome.status,
                 items_seen=len(outcome.items),
-                cost_usd=outcome.result.cost_usd if outcome.result else 0.0,
+                cost_usd=(outcome.result.cost_usd if outcome.result
+                          else outcome.failed_cost_usd),
                 duration_s=round(outcome.duration_s, 3),
                 error=outcome.error,
             )
