@@ -115,8 +115,28 @@ def get_engine(url: str | None = None) -> Engine:
     # pre_ping because a scale-to-zero Postgres drops idle connections when it
     # suspends; without it the first request after a quiet spell fails on a dead
     # pooled connection instead of waking the database.
-    return create_engine(normalise_url(url) if url else database_url(),
-                         pool_pre_ping=True)
+    engine = create_engine(normalise_url(url) if url else database_url(),
+                           pool_pre_ping=True)
+    if engine.dialect.name == "postgresql":
+        event.listen(engine, "connect", _allow_long_fetches)
+    return engine
+
+
+def _allow_long_fetches(dbapi_connection, _record) -> None:
+    """Stop the server killing a session that waits on a slow source.
+
+    The orchestrator reads a source's state, then the adapter spends minutes on
+    the network before the attempt is written -- OpenAI's articles come from
+    the Internet Archive at ~30 s each. Neon ends a session idle in a
+    transaction for 5 minutes, and that took down the whole firing (D85). The
+    commit matters: a SET in a transaction that rolls back is undone.
+
+    Session-level, so it needs a direct connection; behind a transaction-mode
+    pooler it would not stick.
+    """
+    with dbapi_connection.cursor() as cursor:
+        cursor.execute("SET idle_in_transaction_session_timeout = 0")
+    dbapi_connection.commit()
 
 
 def get_session(engine: Engine) -> Session:
