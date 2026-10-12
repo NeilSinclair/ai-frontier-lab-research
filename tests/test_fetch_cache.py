@@ -256,6 +256,15 @@ class TestFetchRetryPolicy:
         assert fc.fetch("https://arxiv.org/html/2501.11111", cache_dir=tmp_path) == "ok"
         assert calls["n"] == 3
 
+    def test_a_body_gzipped_without_being_asked_is_inflated(self, monkeypatch, tmp_path):
+        """deepmind.google gzips to a GitHub runner; the bytes were being
+        decoded as text and failed the firing at landing (D86)."""
+        import gzip
+
+        monkeypatch.setattr(fc.urllib.request, "urlopen",
+                            lambda req, timeout=90: _Response(gzip.compress(b"<rss>ok</rss>")))
+        assert fc.fetch("https://arxiv.org/html/2501.22222", cache_dir=tmp_path) == "<rss>ok</rss>"
+
     def test_a_single_429_no_longer_kills_a_source(self, monkeypatch, tmp_path):
         # deepseek_harvest.fetch had no retry at all, which is why DeepSeek and
         # OpenAI both died on their first request while meta and mistral got

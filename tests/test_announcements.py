@@ -690,6 +690,16 @@ class TestDiscoveryCacheExpires:
         assert calls == [url], "a two-day-old sitemap must not be served from disk"
         assert body == "live"
 
+    def test_a_body_gzipped_without_being_asked_is_inflated(self, monkeypatch, tmp_path):
+        """deepmind.google gzips to a GitHub runner. Undecoded, its feed parsed
+        to zero items and an article's text was stored as raw bytes (D86)."""
+        import gzip
+
+        url = "https://lab.example/rss.xml"
+        self._fake_net(monkeypatch, tmp_path / "c", body=gzip.compress(b"<rss>live</rss>"))
+
+        assert fetch_announcements.fetch(url) == "<rss>live</rss>"
+
     def test_a_fresh_discovery_document_is_served_from_disk(self, monkeypatch, tmp_path):
         url = "https://lab.example/sitemap.xml"
         self._stale(tmp_path / "c", url, age_hours=1)
