@@ -1,4 +1,4 @@
-# bitcap — Frontier Lab Intelligence
+# Frontier Lab Intelligence
 
 Tracks frontier AI labs, scores what they publish against a deterministic rule,
 and joins every signal to a tech fund's portfolio holdings and to AI-engineering
@@ -6,7 +6,7 @@ practice — with a verbatim quote behind every tag.
 
 ## Live
 
-**<URL: fill in once deployed>** — the pipeline fires weekly against hosted
+**<https://ai-frontier-lab-research.onrender.com>** — the pipeline fires weekly against hosted
 Postgres.
 
 Built as a take-home case study for a tech-focused investment fund; now a
@@ -211,7 +211,7 @@ for the same answer:
 
 | Cache | Where | A cold start... |
 |---|---|---|
-| Classifier output | `raw_llm_responses`, keyed on prompt version — `v9` for announcements, `p1` for papers | never re-classifies |
+| Classifier output | `raw_llm_responses`, keyed on prompt version — `v9` for announcements, `p1` for papers, `t2` for posts | never re-classifies |
 | GitHub commit history | `raw_github_repos`, keyed on `pushed_at` | not read while the github leg is off (D84); when on, walks only repos that were pushed to |
 | Fetched pages, extracted bylines | `research/docs/` on disk | re-fetches and re-extracts |
 
@@ -282,8 +282,9 @@ guarantee is that the API returns 401 without a token.
 
 ### The digest
 
-`/digest` is the periodic report: one dated cut of the corpus per audience,
-covering a 48-hour publication window. Two things make it different from the
+`/digest` is the periodic report: one dated cut of the corpus per audience.
+The page opens on a rolling view of the last 14 days; each stored edition
+covers one day. Two things make it different from the
 dashboard.
 
 **It states what it suppressed.** Every edition carries `considered`,
@@ -301,9 +302,10 @@ against a later re-scored corpus would restate last week's edition in this
 week's terms. `digests` therefore survives `rebuild`, like the other ops tables.
 Past editions are in the selector at the top of the page.
 
-Thresholds, the window, and the fan-out cap are in `config/digest.yaml`. The
-48-hour default is measured rather than assumed — see `docs/decisions.md` D48
-for the replay over the whole corpus that chose it.
+Thresholds, both windows, and the fan-out cap are in `config/digest.yaml`,
+alongside the replay over the corpus that the 24-hour edition rests on
+(`docs/decisions.md` D51, D79). A weekly firing publishes the seven daily
+editions since the last one (D83).
 
 ### The register
 
@@ -351,7 +353,8 @@ by a restart; the Actions tab's "Run workflow" is the sturdier way to fire.
   the single-account gate (`api/auth.py`), and the manual trigger (`api/pipeline.py`)
 - `frontend/` — Next.js app (investment/AI-team dashboards, insight detail view)
 - `docs/` — planning, running decision log, cost ledger
-- `tests/` — `uv run pytest`. Two display smoke tests sit outside it and run
+- `tests/` — `uv run pytest`. Four display smoke tests sit outside it and run
   under plain node, because there is no browser in CI and a rendering bug in
-  either is invisible until someone opens the page:
-  `node tests/smoke_report.js` and `node tests/smoke_digest_window.js`
+  any of them is invisible until someone opens the page:
+  `node tests/smoke_report.js`, `node tests/smoke_digest_window.js`,
+  `node tests/smoke_dashboard_render.js` and `node tests/smoke_digest_render.js`
