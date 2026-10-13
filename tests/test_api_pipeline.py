@@ -192,7 +192,7 @@ class TestTheProbeLeavesTheDatabaseAsleep:
 
         blueprint = yaml.safe_load(
             (Path(__file__).parent.parent / "render.yaml").read_text(encoding="utf-8"))
-        api = next(s for s in blueprint["services"] if s["name"] == "bitcap-api")
+        api = next(s for s in blueprint["services"] if s["name"] == "ai-frontier-lab-research-api")
         assert api["healthCheckPath"] == "/api/ping"
 
     def test_pooled_connections_are_checked_before_use(self):

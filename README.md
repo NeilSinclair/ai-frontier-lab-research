@@ -41,7 +41,7 @@ path (optional — without it the database falls back to a local sqlite file).
 (below).
 
 ```bash
-git clone <repo> && cd bitcap
+git clone <repo> && cd ai-frontier-lab-research
 uv sync                        # env + deps from the committed lockfile
 docker compose up -d           # local Postgres (skip for sqlite fallback)
 cp .env.example .env           # then uncomment DATABASE_URL for the container above
@@ -228,7 +228,7 @@ Actions secrets; the API needs the same keys only so the run button works:
 | Variable | Needed for |
 |---|---|
 | `DATABASE_URL` | everything |
-| `ANTHROPIC_API_KEY` | classification and drift. Needed in **both** the workflow and `bitcap-api` — the pipeline tab runs firings from the API service, and without it the gold-set check measures nothing (D45) |
+| `ANTHROPIC_API_KEY` | classification and drift. Needed in **both** the workflow and `ai-frontier-lab-research-api` — the pipeline tab runs firings from the API service, and without it the gold-set check measures nothing (D45) |
 | `OPENAI_API_KEY` | embeddings for the duplicate collapse, and the repository relevance filter (`gpt-5-mini`, D65). In **both** places, same reason as above. Unset, the duplicate phase still runs its free passes but the cosine gate never fires and `dedupe.coverage` is 0, and the relevance filter fails *open* so the releases leg quietly watches the ungated star ranking — the deploy goes green with half of each feature off. `alerts.dedupe_unavailable` and `alerts.repo_filter_unavailable` are what say so |
 | `GITHUB_TOKEN` | the releases leg (and the GitHub leg, if switched back on). In the workflow the secret is named `HARVEST_GITHUB_TOKEN`, because Actions reserves `GITHUB_*` |
 | `ALERT_WEBHOOK_URL` | only when `alerts.channel` is `webhook` |
@@ -240,8 +240,8 @@ assigns and let both services redeploy:
 
 | Variable | On | Value |
 |---|---|---|
-| `FRONTEND_ORIGIN` | `bitcap-api` | the static site's URL — the API's CORS allow-list. Must not be blank: an empty value overrides the `http://localhost:3000` default and blocks every origin. |
-| `NEXT_PUBLIC_API_URL` | `bitcap-web` | the API's URL. Inlined into the bundle at build time, so a change rebuilds rather than restarts. |
+| `FRONTEND_ORIGIN` | `ai-frontier-lab-research-api` | the static site's URL — the API's CORS allow-list. Must not be blank: an empty value overrides the `http://localhost:3000` default and blocks every origin. |
+| `NEXT_PUBLIC_API_URL` | `ai-frontier-lab-research` | the API's URL. Inlined into the bundle at build time, so a change rebuilds rather than restarts. |
 
 Because `NEXT_PUBLIC_API_URL` is baked in at build time, a frontend change needs
 a rebuild, not a restart — which is also why a new page appears as a 404 on the
@@ -270,7 +270,7 @@ uv run python -m api.auth      # prompts for a password, prints the two values
 ```
 
 Put `AUTH_EMAIL`, `AUTH_PASSWORD_HASH` and `AUTH_SECRET` in `.env` locally, and
-in the Render dashboard for `bitcap-api`. The password itself is never stored:
+in the Render dashboard for `ai-frontier-lab-research-api`. The password itself is never stored:
 `AUTH_PASSWORD_HASH` is a salted scrypt hash, and rotating `AUTH_SECRET` logs
 every session out.
 

@@ -11,7 +11,7 @@
 
 services:
   - type: web
-    name: bitcap-api
+    name: ai-frontier-lab-research-api
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
@@ -55,7 +55,7 @@ services:
   # NEXT_PUBLIC_API_URL is inlined into the bundle at build time, so changing
   # it requires a rebuild, not a restart. Render triggers one on the change.
   - type: web
-    name: bitcap-web
+    name: ai-frontier-lab-research
     runtime: static
     rootDir: frontend
     buildCommand: npm ci && npm run build
