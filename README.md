@@ -41,7 +41,7 @@ path (optional — without it the database falls back to a local sqlite file).
 (below).
 
 ```bash
-git clone <repo> && cd bitcap
+git clone <repo> && cd ai-frontier-lab-research
 uv sync                        # env + deps from the committed lockfile
 docker compose up -d           # local Postgres (skip for sqlite fallback)
 cp .env.example .env           # then uncomment DATABASE_URL for the container above
